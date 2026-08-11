@@ -1,0 +1,16 @@
+build/
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite
+.venv/
+.DS_Store
+
+# Never commit clinical text or downloaded vocabularies.
+/*.csv
+/*.json
+# 'vocab' with no slash: also catches a symlink to a vocabulary directory,
+# which a trailing-slash pattern does not match.
+vocab
+vocab/
+incoming/
