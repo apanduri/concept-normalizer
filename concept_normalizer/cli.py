@@ -15,6 +15,7 @@ from collections import Counter
 from pathlib import Path
 
 from . import ontology as ontology_loader
+from . import aliases as alias_mod
 from .normalize import Status, normalize
 from .registry import VocabularyRegistrar
 from .target import OmopVocabulary
@@ -37,8 +38,18 @@ def _target(args: argparse.Namespace) -> OmopVocabulary:
     return OmopVocabulary(args.vocab, vocabulary_ids=vocabs)
 
 
+def _aliases(args: argparse.Namespace):
+    if not getattr(args, "aliases", None):
+        return None
+    as_path = Path(args.aliases)
+    table = alias_mod.load(as_path) if as_path.exists() else alias_mod.load_builtin(args.aliases)
+    print(f"[aliases] {table}")
+    return table
+
+
 def cmd_normalize(args: argparse.Namespace) -> int:
     target = _target(args)
+    table = _aliases(args)
     terms: list[str] = list(args.text or [])
     if args.terms_file:
         terms.extend(
@@ -48,7 +59,7 @@ def cmd_normalize(args: argparse.Namespace) -> int:
         print("error: give one or more terms, or --terms-file", file=sys.stderr)
         return 2
 
-    results = [normalize(t, target) for t in terms]
+    results = [normalize(t, target, aliases=table) for t in terms]
     if args.json:
         print(json.dumps([r.to_dict() for r in results], indent=2))
     else:
@@ -61,6 +72,8 @@ def cmd_normalize(args: argparse.Namespace) -> int:
                 print(f"  AMBIGUOUS  {r.text!r}  ({r.detail})")
                 for c in r.candidates[:4]:
                     print(f"             ? {c.concept}  domain={c.concept.domain_id}")
+            elif r.status is Status.NOT_IN_TARGET:
+                print(f"  REVIEWED-NO {r.text!r}  ({r.detail})")
             else:
                 print(f"  UNMAPPED   {r.text!r}  ({r.detail})")
     counts = Counter(r.status.value for r in results)
@@ -161,6 +174,9 @@ def build_parser() -> argparse.ArgumentParser:
     def common(sp: argparse.ArgumentParser) -> None:
         sp.add_argument("--vocab", type=Path, required=True,
                         help="OMOP concept.db backing the target")
+        sp.add_argument("--aliases",
+                        help="reviewed alias table: a built-in name (e.g. 'acts') or a "
+                             "path to a CSV. Consulted before searching.")
         sp.add_argument("--target", default="OMOP",
                         help="OMOP (standard concepts) or a vocabulary filter such "
                              "as SNOMED, LOINC, 'SNOMED,LOINC'")

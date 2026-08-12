@@ -193,3 +193,99 @@ class TestListTarget(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestAliasTables(TargetTestBase):
+    """Option A (reviewed table) first, option B (search) as fallback."""
+
+    def table(self, rows: str) -> "object":
+        from concept_normalizer import aliases as alias_mod
+        p = Path(self.tmp.name) / "t.csv"
+        p.write_text("source_term,concept_id,target,note,reviewed_by\n" + rows)
+        return alias_mod.load(p, name="t")
+
+    def test_reviewed_alias_beats_search(self) -> None:
+        """The table says Frailty; search would say the Device. Table wins."""
+        t = OmopVocabulary(self.vocab_path)
+        table = self.table("Treadmill,4086506,OMOP,reviewed,xai\n")
+        r = normalize("Treadmill", t, aliases=table)
+        self.assertIs(r.status, Status.MAPPED)
+        self.assertEqual(r.concept.concept_id, 4086506)
+        self.assertIn("reviewed alias", r.detail)
+        t.close()
+
+    def test_term_not_in_table_falls_through_to_search(self) -> None:
+        """A caller with no entry for a term must still get an answer."""
+        t = OmopVocabulary(self.vocab_path)
+        table = self.table("something_else,4086506,OMOP,,\n")
+        r = normalize("Pack years", t, aliases=table)
+        self.assertIs(r.status, Status.MAPPED)
+        self.assertEqual(r.concept.concept_id, 4151768)
+        t.close()
+
+    def test_blank_concept_id_is_a_reviewed_no_not_a_gap(self) -> None:
+        """A reviewed 'nothing suitable' must NOT be overridden by search."""
+        t = OmopVocabulary(self.vocab_path)
+        table = self.table("Frailty,,OMOP,checked - nothing suitable,xai\n")
+        r = normalize("Frailty", t, aliases=table)
+        self.assertIs(r.status, Status.NOT_IN_TARGET)
+        self.assertIsNone(r.concept)          # search WOULD have found 4086506
+        self.assertIn("nothing suitable", r.detail)
+        t.close()
+
+    def test_matching_is_case_and_underscore_insensitive(self) -> None:
+        t = OmopVocabulary(self.vocab_path)
+        table = self.table("mmse_score,4169175,OMOP,,\n")
+        for term in ("mmse_score", "MMSE Score", "mmse-score"):
+            self.assertEqual(
+                normalize(term, t, aliases=table).concept.concept_id, 4169175, term
+            )
+        t.close()
+
+    def test_alias_for_another_target_is_ignored(self) -> None:
+        """The same term maps to different concepts in SNOMED and LOINC."""
+        table = self.table("Frailty,4086506,SNOMED,,\n")
+        r = normalize("Frailty", loinc(self.vocab_path), aliases=table)
+        self.assertIsNot(r.status, Status.MAPPED)
+
+    def test_alias_pointing_at_a_missing_concept_is_reported(self) -> None:
+        t = OmopVocabulary(self.vocab_path)
+        table = self.table("whatever,999999999,OMOP,,\n")
+        r = normalize("whatever", t, aliases=table)
+        self.assertIs(r.status, Status.UNMAPPED)
+        self.assertIn("absent from this target", r.detail)
+        t.close()
+
+    def test_non_integer_concept_id_is_rejected_at_load(self) -> None:
+        from concept_normalizer import aliases as alias_mod
+        p = Path(self.tmp.name) / "bad.csv"
+        p.write_text("source_term,concept_id\nx,not-a-number\n")
+        with self.assertRaises(ValueError) as ctx:
+            alias_mod.load(p)
+        self.assertIn("not an integer", str(ctx.exception))
+
+    def test_comment_lines_are_not_mistaken_for_the_header(self) -> None:
+        from concept_normalizer import aliases as alias_mod
+        p = Path(self.tmp.name) / "c.csv"
+        p.write_text("# status: draft\n# reviewed by nobody yet\n"
+                     "source_term,concept_id\nmmse_score,4169175\n")
+        table = alias_mod.load(p)
+        self.assertEqual(len(table), 1)
+
+
+class TestShippedActsTable(unittest.TestCase):
+    def test_acts_table_loads_and_is_split_between_mapped_and_reviewed_no(self) -> None:
+        from concept_normalizer import aliases as alias_mod
+        self.assertIn("acts", alias_mod.available_builtin())
+        table = alias_mod.load_builtin("acts")
+        mapped = table.concept_ids()
+        self.assertEqual(len(mapped), 13)
+        self.assertEqual(mapped["mmse_score"], 4169175)
+        self.assertTrue(table.get("mattis_drs").is_deliberate_nonmapping)
+
+    def test_every_non_mapping_records_why(self) -> None:
+        """A blank concept_id with no explanation is indistinguishable from neglect."""
+        from concept_normalizer import aliases as alias_mod
+        for alias in alias_mod.load_builtin("acts").aliases:
+            if alias.is_deliberate_nonmapping:
+                self.assertTrue(alias.note, f"{alias.source_term} has no note")

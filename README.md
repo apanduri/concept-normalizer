@@ -55,14 +55,54 @@ r.concept.concept_id      # 4164973
 r.concept.domain_id       # 'Measurement'
 ```
 
-Four outcomes, always explicit:
+Five outcomes, always explicit:
 
 | Status | Meaning |
 |---|---|
 | `MAPPED` | exactly one confident concept |
 | `AMBIGUOUS` | several plausible — candidates attached, caller or human decides |
 | `UNMAPPED` | nothing plausible in this target |
+| `NOT_IN_TARGET` | reviewed, and deliberately not mapped |
 | `PREMAPPED` | the input already carried a concept |
+
+## Two resolution paths
+
+A caller with known terms gets a reviewed answer; a caller without one still gets
+an answer.
+
+```
+1. reviewed alias table   "mmse_score" -> 4169175        deterministic, signed off
+2. search the target      "Pack years" -> 4151768        for anything not in the table
+```
+
+Aliases are consulted first, because a reviewed decision must beat a search result
+— that is what makes a correction stick instead of being re-litigated every run.
+Callers with no table fall straight through to search, which is why the table is
+optional and per-source.
+
+```bash
+python3 -m concept_normalizer normalize --vocab concept.db --aliases acts \
+    mmse_score mattis_drs "Pack years"
+```
+
+```
+  MAPPED      'mmse_score'  -> 4169175 'Mini-mental state examination'   (reviewed alias)
+  REVIEWED-NO 'mattis_drs'  (nothing containing Mattis — absent from OMOP)
+  MAPPED      'Pack years'  -> 4151768 'Pack years'                      (search)
+```
+
+A blank `concept_id` in a table means **checked, nothing suitable** — a decision,
+not an omission. It returns `NOT_IN_TARGET` and deliberately stops the search
+fallback, so a reviewed "no" cannot be overridden by a guess.
+
+Shipped tables live in `concept_normalizer/alias_tables/`; `--aliases` also takes
+a path to your own CSV:
+
+```csv
+source_term,concept_id,target,note,reviewed_by
+mmse_score,4169175,OMOP,"SNOMED Measurement — scored instrument",xai
+mattis_drs,,OMOP,"absent from OMOP",xai
+```
 
 ## Commands
 

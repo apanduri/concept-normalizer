@@ -1,0 +1,33 @@
+# ACTS chart-review rubric fields -> OMOP standard concepts.
+#
+# STATUS: DRAFT — proposed by exact-name search, NOT yet clinically reviewed.
+# Fill reviewed_by as rows are confirmed. A blank concept_id means "checked, OMOP
+# has nothing suitable" — which is a decision, not an omission.
+#
+# All the scored instruments resolved to SNOMED *Measurement* concepts. That is
+# the table designed for scored instruments (value_as_number, units, ranges), so
+# it is the better fit even though an early worked example used a LOINC
+# Observation concept for MMSE.
+source_term,concept_id,target,note,reviewed_by
+mmse_score,4169175,OMOP,"Mini-mental state examination — Measurement/SNOMED",
+moca_score,44808666,OMOP,"Montreal cognitive assessment — Measurement/SNOMED",
+cdr_global,4164818,OMOP,"Clinical dementia rating scale — Measurement/SNOMED",
+hachinski_score,4164973,OMOP,"Hachinski ischemia score — Measurement/SNOMED",
+npi_total,37157689,OMOP,"Neuropsychiatric Inventory Questionnaire — Measurement/SNOMED",
+gds_depression_score,4159706,OMOP,"Geriatric depression scale — Measurement/SNOMED",
+gds_stage,36674488,OMOP,"Global Deterioration Scale — Measurement/SNOMED",
+apoe_genotype,37397776,OMOP,"Apolipoprotein E genotype — Measurement/SNOMED",
+pack_year,4151768,OMOP,"Pack years — Measurement/SNOMED",
+smoking_status,43054909,OMOP,"Tobacco smoking status — Observation/LOINC",
+education_years,42528763,OMOP,"Highest level of education — Observation/LOINC; ACTS records YEARS while this concept is a level, so confirm the value fits",
+postmenopause,4295261,OMOP,"Postmenopausal state — Observation/SNOMED",
+lmp_date,4072438,OMOP,"Date of last menstrual period — Measurement/SNOMED",
+mattis_drs,,OMOP,"nothing containing Mattis or dementia rating scale — absent from OMOP",
+tics_score,,OMOP,"nothing containing telephone interview — absent from OMOP",
+cornell_csdd,,OMOP,"closest is 37168624 Cornell medical index-health questionnaire, a DIFFERENT instrument — CSDD absent",
+smoking_duration,,OMOP,"no concept for smoking duration in years; may be derivable from quit year rather than stored",
+quit_time,,OMOP,"substring hits are PROMIS attitude items (If I quit smoking I will breathe easier) — wrong sense, not a quit date",
+pack_per_day,,OMOP,"only qualified variants (per day --during pregnancy) or lifetime totals found",
+impaired_cognition,,OMOP,"MODELLING DECISION: only severity-specific conditions exist (439795 Minimal / 45765899 Moderate / 45765900 Severe cognitive impairment) but the rubric asks yes/no",
+allergen,,OMOP,"MODELLING DECISION: OMOP puts the substance in the concept (439224 Allergy to drug) so this is one concept per allergen, not one per field",
+vaccine_name,,OMOP,"MODELLING DECISION: vaccines are Drug-domain concepts (35894915 COVID-19 vaccine); likely DRUG_EXPOSURE per vaccine",

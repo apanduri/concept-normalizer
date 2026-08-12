@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Iterable
 
+from .aliases import AliasTable
 from .target import Candidate, Concept, TargetVocabulary
 
 
@@ -31,6 +32,7 @@ class Status(str, Enum):
     AMBIGUOUS = "ambiguous"        # several plausible; caller/human decides
     UNMAPPED = "unmapped"          # nothing plausible in this target
     PREMAPPED = "premapped"        # the input already carried a concept
+    NOT_IN_TARGET = "not_in_target"  # reviewed and deliberately unmapped
 
 
 @dataclass(slots=True)
@@ -79,20 +81,51 @@ def normalize(
     text: str,
     target: TargetVocabulary,
     *,
-    aliases: dict[str, str] | None = None,
+    aliases: dict[str, str] | AliasTable | None = None,
 ) -> Normalization:
     """Normalize one piece of extracted text against one target vocabulary.
 
-    `aliases` maps input text to a code in the target, for mappings a human has
-    already decided.  Checked first, because a reviewed decision must always beat
-    a search result — that is what makes corrections stick.
+    Two paths, in this order:
+
+      1. a reviewed alias table, when the caller has one for its known terms
+      2. searching the target vocabulary
+
+    Aliases are consulted first because a reviewed decision must beat a search
+    result — that is what makes a correction stick instead of being re-litigated
+    every run.  Callers with no alias table (any other project reusing this) fall
+    straight through to search, which is why the table is optional.
+
+    `aliases` accepts an AliasTable or a plain {term: code} dict.
     """
     tname = getattr(target, "name", "target")
     if not text or not text.strip():
         return Normalization(text=text, target=tname, status=Status.UNMAPPED,
                              detail="empty text")
 
-    if aliases:
+    if isinstance(aliases, AliasTable):
+        alias = aliases.get(text, target=tname)
+        if alias is not None:
+            if alias.is_deliberate_nonmapping:
+                # Someone checked and found nothing suitable. Distinct from "not
+                # looked at yet", and it must stop the search fallback — otherwise
+                # a reviewed "no" gets quietly overridden by a bad guess.
+                return Normalization(
+                    text=text, target=tname, status=Status.NOT_IN_TARGET,
+                    detail=alias.note or "reviewed: no suitable concept in this target",
+                )
+            concept = _by_concept_id(target, alias.concept_id)
+            if concept is not None:
+                return Normalization(
+                    text=text, target=tname, status=Status.MAPPED, concept=concept,
+                    detail=f"reviewed alias ({aliases.name})"
+                           + (f": {alias.note}" if alias.note else ""),
+                )
+            return Normalization(
+                text=text, target=tname, status=Status.UNMAPPED,
+                detail=f"alias points at concept_id {alias.concept_id}, "
+                       f"absent from this target",
+            )
+    elif aliases:
         code = aliases.get(text) or aliases.get(text.strip().lower())
         if code:
             concept = target.by_code(code)
@@ -130,10 +163,18 @@ def normalize(
                          candidates=candidates, detail="no exact match")
 
 
+def _by_concept_id(target: TargetVocabulary, concept_id: int | None) -> Concept | None:
+    """Aliases record concept_ids; not every target can look one up."""
+    if concept_id is None:
+        return None
+    getter = getattr(target, "by_concept_id", None)
+    return getter(concept_id) if getter else None
+
+
 def normalize_all(
     texts: Iterable[str],
     target: TargetVocabulary,
     *,
-    aliases: dict[str, str] | None = None,
+    aliases: dict[str, str] | AliasTable | None = None,
 ) -> list[Normalization]:
     return [normalize(t, target, aliases=aliases) for t in texts]
