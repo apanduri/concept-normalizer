@@ -23,7 +23,10 @@ from .registry import (
     VocabularyRegistrar,
     stable_concept_id,
 )
+from .aliases import AliasTable
 from .target import (
+    UNIT_DOMAINS,
+    VALUE_DOMAINS,
     Candidate,
     Concept,
     ListVocabulary,
@@ -31,10 +34,15 @@ from .target import (
     loinc,
     normalize_text,
     snomed,
+    unit_target,
+    value_target,
 )
 
 __all__ = [
+    "AliasTable",
     "CUSTOM_ID_BASE",
+    "UNIT_DOMAINS",
+    "VALUE_DOMAINS",
     "Candidate",
     "Concept",
     "DEFAULT_DOMAIN",
@@ -52,4 +60,6 @@ __all__ = [
     "normalize_text",
     "snomed",
     "stable_concept_id",
+    "unit_target",
+    "value_target",
 ]

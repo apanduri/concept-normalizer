@@ -1,0 +1,27 @@
+# ACTS categorical ANSWERS -> OMOP value concepts, for value_as_concept_id.
+#
+# Keyed "<field_id>.<answer>", because the same answer text means different things
+# under different fields.
+#
+# These live in the 'Meas Value' domain, which is what value_as_concept_id points
+# at — distinct from the event concept for the field itself. Searching the event
+# domains for "Former smoker" finds nothing.
+#
+# STATUS: DRAFT — proposed by exact-name search, not yet clinically reviewed.
+source_term,concept_id,target,note,reviewed_by
+smoking_status.current,36309332,OMOP,"Current smoker — Meas Value/LOINC",
+smoking_status.former,45883458,OMOP,"Former smoker — Meas Value/LOINC",
+smoking_status.never,45879404,OMOP,"Never smoker — Meas Value/LOINC",
+smoking_status.unknown,45885135,OMOP,"Unknown if ever smoked — Meas Value/LOINC",
+impaired_cognition.1,4188539,OMOP,"Yes — Meas Value/SNOMED",
+postmenopause.1,4188539,OMOP,"Yes — Meas Value/SNOMED",
+apoe_genotype.e2/e2,,OMOP,"no APOE genotype value concepts found in Meas Value — custom concepts likely",
+apoe_genotype.e2/e3,,OMOP,"as above",
+apoe_genotype.e2/e4,,OMOP,"as above",
+apoe_genotype.e3/e3,,OMOP,"as above",
+apoe_genotype.e3/e4,,OMOP,"as above",
+apoe_genotype.e4/e4,,OMOP,"as above",
+apoe_genotype.e2_carrier,,OMOP,"as above",
+apoe_genotype.e3_carrier,,OMOP,"as above",
+apoe_genotype.e4_carrier,,OMOP,"as above",
+apoe_genotype.none,,OMOP,"as above",

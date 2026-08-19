@@ -233,6 +233,35 @@ def loinc(db_path: Path, **kwargs) -> OmopVocabulary:
     return OmopVocabulary(db_path, vocabulary_ids=("LOINC",), **kwargs)
 
 
+# Domains that hold ANSWERS rather than events.  OMOP separates the two: the
+# concept for "smoking status" is an Observation, while the concept for "Former
+# smoker" lives in 'Meas Value' — that is what value_as_concept_id points at.
+# Searching for a value in the event domains finds nothing, and searching for an
+# event in Meas Value finds the wrong kind of thing, so they need separate targets.
+VALUE_DOMAINS = ("Meas Value", "Observation")
+
+# Where units live, for unit_concept_id.
+UNIT_DOMAINS = ("Unit",)
+
+
+def value_target(db_path: Path, **kwargs) -> OmopVocabulary:
+    """Target for normalizing a VALUE (an answer), not an event.
+
+        value_target(db) -> "Former smoker" -> 45883458 (Meas Value / LOINC)
+    """
+    kwargs.setdefault("domains", VALUE_DOMAINS)
+    return OmopVocabulary(db_path, **kwargs)
+
+
+def unit_target(db_path: Path, **kwargs) -> OmopVocabulary:
+    """Target for normalizing a UNIT, for unit_concept_id.
+
+        unit_target(db) -> "year" -> 9448 (UCUM)
+    """
+    kwargs.setdefault("domains", UNIT_DOMAINS)
+    return OmopVocabulary(db_path, **kwargs)
+
+
 # ---------------------------------------------------------------------------
 # list-backed target
 # ---------------------------------------------------------------------------

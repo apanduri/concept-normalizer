@@ -1,0 +1,23 @@
+# ACTS numeric fields -> OMOP unit concepts, for unit_concept_id.
+#
+# Only fields whose value genuinely carries a unit appear here. A blank
+# concept_id means the value is a UNITLESS score (an MMSE of 22 is not 22 of
+# anything) or the unit has no UCUM equivalent — recorded so nobody later assumes
+# the unit was simply forgotten.
+#
+# STATUS: DRAFT — not yet clinically reviewed.
+source_term,concept_id,target,note,reviewed_by
+education_years,9448,OMOP,"year — UCUM 'a'",
+smoking_duration,9448,OMOP,"year — UCUM 'a'",
+pack_year,,OMOP,"pack-year has no UCUM unit; the concept 'Pack years' already carries it",
+pack_per_day,,OMOP,"packs/day has no UCUM unit",
+mmse_score,,OMOP,"unitless score",
+moca_score,,OMOP,"unitless score",
+mattis_drs,,OMOP,"unitless score",
+tics_score,,OMOP,"unitless score",
+hachinski_score,,OMOP,"unitless score",
+gds_depression_score,,OMOP,"unitless score",
+cornell_csdd,,OMOP,"unitless score",
+npi_total,,OMOP,"unitless score",
+cdr_global,,OMOP,"unitless staging value",
+gds_stage,,OMOP,"unitless staging value",
