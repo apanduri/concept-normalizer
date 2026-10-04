@@ -14,7 +14,6 @@ use this for normalization alone.
 """
 
 from .normalize import Normalization, Status, normalize, normalize_all
-from .ontology import load as load_ontology
 from .agentic import AgenticResult, TargetProfile, generate_candidates, select_best
 from .agentic import normalize as agentic_normalize
 from .agentic_normalize import normalize as composed_normalize
@@ -32,18 +31,8 @@ from .retriever import (
     get_retriever,
     resolve_index_dir,
 )
-from .registry import (
-    CUSTOM_ID_BASE,
-    DEFAULT_DOMAIN,
-    RegistrationReport,
-    SourceConcept,
-    VocabularyRegistrar,
-    stable_concept_id,
-)
 from .aliases import AliasTable
 from .target import (
-    UNIT_DOMAINS,
-    VALUE_DOMAINS,
     Candidate,
     Concept,
     ListVocabulary,
@@ -51,28 +40,18 @@ from .target import (
     loinc,
     normalize_text,
     snomed,
-    unit_target,
-    value_target,
 )
 
 __all__ = [
     "AliasTable",
     "AgenticResult",
-    "CUSTOM_ID_BASE",
-    "UNIT_DOMAINS",
-    "VALUE_DOMAINS",
     "Candidate",
     "Concept",
-    "DEFAULT_DOMAIN",
     "ListVocabulary",
     "Normalization",
     "OmopVocabulary",
-    "RegistrationReport",
-    "SourceConcept",
     "Status",
-    "VocabularyRegistrar",
     "loinc",
-    "load_ontology",
     "normalize",
     "normalize_all",
     "normalize_text",
@@ -92,7 +71,4 @@ __all__ = [
     "resolve_index_dir",
     "select_best",
     "snomed_profile",
-    "stable_concept_id",
-    "unit_target",
-    "value_target",
 ]

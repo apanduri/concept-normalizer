@@ -109,8 +109,7 @@ mattis_drs,,OMOP,"absent from OMOP",xai
 | Command | What it does |
 |---|---|
 | `normalize` | text → concept, for one term or a file of them |
-| `coverage` | how much of a source ontology exists in the target |
-| `register` | register a source ontology as OMOP custom concepts |
+| `agentic` | normalize with the two-agent LLM pipeline against a target index |
 
 ## Design decisions worth knowing
 
@@ -140,45 +139,14 @@ ids across subtrees — BSO-AD has 40 such collisions in 660 concepts — so key
 the source id silently merges different concepts. Loading rejects a duplicate key
 rather than accepting it.
 
-## Registering an ontology as custom concepts
+## Vocabulary registration (moved)
 
-For source concepts with no equivalent in the target, the OHDSI-supported answer
-is local concepts:
-
-```bash
-python3 -m concept_normalizer coverage --vocab concept.db \
-    --ontology concepts.json --out build/coverage.csv
-# review build/coverage.csv, then:
-python3 -m concept_normalizer register --vocab concept.db \
-    --ontology concepts.json --mappings build/coverage.csv --commit
-```
-
-This writes three things, not one:
-
-- **CONCEPT** — one row per concept, ids in the OHDSI-reserved `>= 2,000,000,000`
-  local range, hashed from the identity so they stay stable as the ontology grows
-- **CONCEPT_ANCESTOR** — generated from the ontology's own parent/child tree,
-  including each concept's self-row. Without these, a custom concept exists but is
-  invisible to cohort SQL, which expands concept sets by descendant
-- **CONCEPT_RELATIONSHIP** — `Maps to` rows where a standard equivalent exists
-
-Domains are inherited: from the concept's own mapping first, then the nearest
-ancestor with one, then `Observation`. Inheritance beats deciding each concept
-individually because it is consistent by construction — siblings land in the same
-domain. Every concept records **which rule decided it**, so a wrong one is
-findable rather than silently baked in.
-
-Re-running is incremental: existing concepts keep their ids, only new ones are
-added.
-
-## Ontology formats
-
-| Format | Shape |
-|---|---|
-| `.json` | nested, with `{id, label, parent_label, depth}` nodes under subtree keys |
-| `.csv` | flat list; recognises `name`/`label`, optional `parent`, `id`, `subtree` |
-
-OWL is not implemented — convert to either shape first.
+The CONCEPT / CONCEPT_ANCESTOR / `Maps to` writer that used to live here
+moved to [omop-nlp-writer](https://github.com/apanduri/omop-nlp-writer),
+because registering concepts into a CDM is a writer concern — not a
+normalization one. A project with no CDM should be able to use this
+package for normalization alone, and the normalizer's dependency surface
+stays narrower as a result.
 
 ## Vocabulary file
 

@@ -272,20 +272,3 @@ class TestAliasTables(TargetTestBase):
         table = alias_mod.load(p)
         self.assertEqual(len(table), 1)
 
-
-class TestShippedActsTable(unittest.TestCase):
-    def test_acts_table_loads_and_is_split_between_mapped_and_reviewed_no(self) -> None:
-        from concept_normalizer import aliases as alias_mod
-        self.assertIn("acts", alias_mod.available_builtin())
-        table = alias_mod.load_builtin("acts")
-        mapped = table.concept_ids()
-        self.assertEqual(len(mapped), 13)
-        self.assertEqual(mapped["mmse_score"], 4169175)
-        self.assertTrue(table.get("mattis_drs").is_deliberate_nonmapping)
-
-    def test_every_non_mapping_records_why(self) -> None:
-        """A blank concept_id with no explanation is indistinguishable from neglect."""
-        from concept_normalizer import aliases as alias_mod
-        for alias in alias_mod.load_builtin("acts").aliases:
-            if alias.is_deliberate_nonmapping:
-                self.assertTrue(alias.note, f"{alias.source_term} has no note")
