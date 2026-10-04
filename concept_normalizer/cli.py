@@ -166,6 +166,44 @@ def cmd_register(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_agentic(args):
+    """Thin CLI entry point around the two-agent pipeline.
+
+    Resolves the shipped profile by name, lets --index-dir override the default
+    on-disk index path, and prints a per-input report with the chosen code and
+    the all_candidates audit trail — same shape of information CP's existing
+    SNOMED pipeline prints.
+    """
+    from .agentic import normalize as agentic_normalize
+    from .profiles import by_name as profile_by_name
+    from .retriever import Retriever
+
+    try:
+        profile = profile_by_name(args.profile)
+    except KeyError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    if args.index_dir:
+        profile = profile.__class__(
+            name=profile.name, style_hint=profile.style_hint,
+            purpose=profile.purpose, examples=profile.examples,
+            index_dir=str(args.index_dir),
+        )
+    retriever = Retriever(Path(profile.index_dir))
+
+    for text in args.text:
+        result = agentic_normalize(text, profile, retriever=retriever)
+        if result.code is None:
+            print(f"UNMAPPED  {text!r}  ({result.chosen_via})")
+            continue
+        print(f"MAPPED    {text!r}")
+        print(f"          -> {result.code} {result.name!r}  "
+              f"via={result.chosen_via}  candidate={result.candidate_used!r}")
+        print(f"          semantic={result.semantic_score:.4f}  "
+              f"syntactic={result.syntactic_score:.0f}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m concept_normalizer", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -180,6 +218,15 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--target", default="OMOP",
                         help="OMOP (standard concepts) or a vocabulary filter such "
                              "as SNOMED, LOINC, 'SNOMED,LOINC'")
+
+    a = sub.add_parser("agentic",
+                       help="normalize via the two-agent LLM pipeline (CP-ported)")
+    a.add_argument("text", nargs="+", help="raw input phrase(s)")
+    a.add_argument("--profile", required=True,
+                   help="shipped profile name: snomed, loinc, omop, bso_ad")
+    a.add_argument("--index-dir", type=Path,
+                   help="override the profile's index_dir")
+    a.set_defaults(func=cmd_agentic)
 
     n = sub.add_parser("normalize", help="normalize terms against a target")
     common(n)

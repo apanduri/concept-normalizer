@@ -14,3 +14,6 @@ __pycache__/
 vocab
 vocab/
 incoming/
+
+# Email PDFs and other personal correspondence
+*.pdf

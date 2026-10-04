@@ -15,6 +15,23 @@ use this for normalization alone.
 
 from .normalize import Normalization, Status, normalize, normalize_all
 from .ontology import load as load_ontology
+from .agentic import AgenticResult, TargetProfile, generate_candidates, select_best
+from .agentic import normalize as agentic_normalize
+from .agentic_normalize import normalize as composed_normalize
+from .profiles import (
+    PROFILES,
+    bso_ad_profile,
+    by_name as profile_by_name,
+    loinc_profile,
+    omop_profile,
+    snomed_profile,
+)
+from .retriever import (
+    RetrievedConcept,
+    Retriever,
+    get_retriever,
+    resolve_index_dir,
+)
 from .registry import (
     CUSTOM_ID_BASE,
     DEFAULT_DOMAIN,
@@ -40,6 +57,7 @@ from .target import (
 
 __all__ = [
     "AliasTable",
+    "AgenticResult",
     "CUSTOM_ID_BASE",
     "UNIT_DOMAINS",
     "VALUE_DOMAINS",
@@ -59,6 +77,21 @@ __all__ = [
     "normalize_all",
     "normalize_text",
     "snomed",
+    "PROFILES",
+    "RetrievedConcept",
+    "Retriever",
+    "TargetProfile",
+    "agentic_normalize",
+    "bso_ad_profile",
+    "composed_normalize",
+    "generate_candidates",
+    "get_retriever",
+    "loinc_profile",
+    "omop_profile",
+    "profile_by_name",
+    "resolve_index_dir",
+    "select_best",
+    "snomed_profile",
     "stable_concept_id",
     "unit_target",
     "value_target",

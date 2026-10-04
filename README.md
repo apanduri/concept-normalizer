@@ -194,3 +194,63 @@ python3 -m unittest discover -s tests
 ```
 
 Stdlib only, no install step.
+
+---
+
+## Two-agent LLM-driven normalization (ported from CP)
+
+A free-text phrase ("Transgender and Gender Nonconforming (TGNC) Identification
+in EHRs") does not match any concept name exactly, so the exact-name path returns
+nothing. The agentic path solves this with a three-stage pipeline:
+
+```
+Agent 1 (LLM)       raw text → 3-5 candidate phrases at different abstraction levels
+SapBERT + FAISS     each candidate → nearest concepts in the SELECTED target
+Agent 2 (LLM)       picks the best (or returns -1 for "none fit")
+```
+
+Ported from `backend/app/extraction/snomed_normalizer.py` in the CP Library, with
+the target as a runtime argument instead of hardcoded SNOMED. Alias tables stay
+as an override — a signed-off decision still beats a model decision — so the
+composed path is `alias → agentic → exact-name fallback`.
+
+### Supported targets
+
+Each target is a `TargetProfile` + a FAISS index on disk:
+
+```python
+from concept_normalizer import profile_by_name, agentic_normalize, Retriever
+from pathlib import Path
+
+profile = profile_by_name("snomed")        # or "loinc", "omop", "bso_ad"
+retriever = Retriever(Path(profile.index_dir))
+result = agentic_normalize(
+    "Transgender and Gender Nonconforming (TGNC) Identification in EHRs",
+    profile, retriever=retriever,
+)
+# result.code, result.name, result.candidate_used, result.all_candidates
+```
+
+### Building a target's index
+
+```bash
+python scripts/build_index.py --target snomed \
+    --from /path/to/concepts.csv --out indexes/snomed
+```
+
+Input CSV needs at minimum `code` and `name` columns; everything else is kept as
+metadata on each hit. The build is one-time per vocabulary release; a built
+index is portable across machines.
+
+### Dependencies
+
+The agentic path needs:
+
+- `langchain_openai` + an OpenRouter (or OpenAI-compatible) key for the LLM
+- `transformers` + `torch` for SapBERT
+- `faiss-cpu` (or `faiss-gpu`) for the index
+- `rapidfuzz` for the syntactic re-rank
+
+The alias-table and exact-name paths work without any of these — the module stays
+importable so a project that doesn't need the agentic path can skip the heavy
+install.
