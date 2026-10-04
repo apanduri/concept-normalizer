@@ -25,6 +25,14 @@ from .profiles import (
     omop_profile,
     snomed_profile,
 )
+from .tree_ontology import (
+    ConceptNode,
+    TreeOntology,
+    TreeResult,
+    TreeTargetProfile,
+    load_tree,
+    normalize_tree,
+)
 from .retriever import (
     RetrievedConcept,
     Retriever,
@@ -57,6 +65,7 @@ __all__ = [
     "normalize_text",
     "snomed",
     "PROFILES",
+    "ConceptNode",
     "RetrievedConcept",
     "Retriever",
     "TargetProfile",
@@ -70,5 +79,10 @@ __all__ = [
     "profile_by_name",
     "resolve_index_dir",
     "select_best",
+    "TreeOntology",
+    "TreeResult",
+    "TreeTargetProfile",
+    "load_tree",
+    "normalize_tree",
     "snomed_profile",
 ]

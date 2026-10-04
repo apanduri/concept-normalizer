@@ -110,6 +110,31 @@ def cmd_agentic(args):
     return 0
 
 
+def cmd_tree(args):
+    """Thin CLI entry around the tree-navigation engine.
+
+    Loads an ontology JSON, builds a TreeTargetProfile, and prints one hit per
+    input phrase. --entity-type is repeatable, matching how a project might
+    narrow BSO-AD to just the SDOH branches without the Dementia one.
+    """
+    from .tree_ontology import TreeTargetProfile, normalize_tree
+
+    only = tuple(args.entity_type) if args.entity_type else None
+    target = TreeTargetProfile(
+        name=args.name or args.ontology.stem,
+        ontology_path=args.ontology,
+        only_entity_types=only,
+    )
+    for text in args.text:
+        result = normalize_tree(text, target)
+        if result.is_novel:
+            print(f"NOVEL     {text!r}  ({result.raw_response!r})")
+        else:
+            print(f"MAPPED    {text!r}")
+            print(f"          -> {result.label} ({result.entity_type})")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m concept_normalizer", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -133,6 +158,17 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--index-dir", type=Path,
                    help="override the profile's index_dir")
     a.set_defaults(func=cmd_agentic)
+
+    t = sub.add_parser("tree",
+                       help="normalize via tree navigation (BSO-AD-style ontology)")
+    t.add_argument("text", nargs="+", help="raw input phrase(s)")
+    t.add_argument("--ontology", type=Path, required=True,
+                   help="BSO-AD-shaped concepts.json")
+    t.add_argument("--name", default=None,
+                   help="display name for this ontology (used in the prompt)")
+    t.add_argument("--entity-type", action="append",
+                   help="restrict to one or more entity_types (default: all)")
+    t.set_defaults(func=cmd_tree)
 
     n = sub.add_parser("normalize", help="normalize terms against a target")
     common(n)

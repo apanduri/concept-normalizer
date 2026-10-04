@@ -222,3 +222,36 @@ The agentic path needs:
 The alias-table and exact-name paths work without any of these — the module stays
 importable so a project that doesn't need the agentic path can skip the heavy
 install.
+
+---
+
+## Tree-navigation engine (ported from chart-review's BSO-AD SDK)
+
+A different mechanism from the two-agent retrieval above: the LLM gets the WHOLE
+ontology as an ASCII tree and picks a `concept_name` from it. Works better than
+embedding retrieval for small, deliberately-structured ontologies where the
+right answer depends on where a leaf sits in the tree, not just on its name.
+
+```python
+from concept_normalizer import TreeTargetProfile, normalize_tree
+from pathlib import Path
+
+target = TreeTargetProfile(
+    name="BSO-AD",
+    ontology_path=Path("concepts.json"),           # BSO-AD shape: {entity_type: {concepts: [...]}}
+    only_entity_types=("Element_Relevant_to_Food",),  # optional subset
+)
+result = normalize_tree("not enough food this month", target)
+# result.label, result.entity_type, result.is_novel
+```
+
+Return values:
+
+- `label` is a concept name from the ontology, or `None` when nothing fits
+- `is_novel=True` is a legitimate outcome, not a failure — same semantics as
+  chart-review's `novel_candidate` status
+- The engine refuses labels the LLM invented; anything not in `concepts.json`
+  becomes novel
+
+Dependencies: just the LLM (`langchain_openai` + an API key). No embedding
+model, no FAISS index — the whole ontology ships in the prompt.
