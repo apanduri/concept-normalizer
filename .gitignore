@@ -17,3 +17,5 @@ incoming/
 
 # Email PDFs and other personal correspondence
 *.pdf
+indexes/
+build/

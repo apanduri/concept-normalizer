@@ -25,6 +25,14 @@ The output directory ends up with two files:
 
 from __future__ import annotations
 
+import os
+# macOS: HF tokenizers + FAISS OpenMP collide after fork, causing a
+# silent segfault partway through a large build. Must be set before any
+# transformers import.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import argparse
 import csv
 import json
@@ -51,10 +59,13 @@ def main() -> int:
     args = p.parse_args()
 
     # Imports deferred so --help works on a machine without torch/faiss.
-    import faiss
-    import numpy as np
+    # Import order matters on macOS: torch and faiss-cpu both bundle libomp,
+    # and whichever one loads second gets a broken OpenMP. Torch tolerates
+    # faiss's libomp but not vice-versa, so torch MUST import first.
     import torch
     from transformers import AutoModel, AutoTokenizer
+    import numpy as np
+    import faiss
 
     rows = _load_rows(args.source, max_rows=args.max_rows)
     if not rows:

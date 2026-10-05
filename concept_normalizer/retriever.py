@@ -23,6 +23,33 @@ retrieval, so an AliasTable short-circuits before this is called.
 
 from __future__ import annotations
 
+import os
+# See scripts/build_index.py: suppress the HF-tokenizers / FAISS-OpenMP
+# fork collision on macOS. Set before transformers is imported anywhere.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+# faiss-cpu and torch each ship their own libomp. Letting both multithread
+# causes a silent segfault at the first embed/search on macOS. Pinning to
+# one thread here is correct for retrieval — the FAISS work is SIMD anyway
+# and the batches are tiny.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
+# Pin libomp at module import time by importing torch BEFORE faiss. Scripts
+# that import this module get the correct order automatically; this is
+# what prevents the segfault seen when another import (e.g. a CLI parser
+# or logging config) sits between the user and torch.
+try:
+    import torch as _torch  # noqa: F401 — order-dependent
+    from transformers import AutoModel as _AutoModel, AutoTokenizer as _AutoTokenizer
+    import numpy as _np
+    import faiss as _faiss
+except ImportError:  # tests + alias-only callers do not need these
+    _torch = None
+    _AutoModel = None
+    _AutoTokenizer = None
+    _np = None
+    _faiss = None
+
 import json
 import logging
 import os
@@ -107,23 +134,18 @@ class Retriever:
         # Heavy imports kept inside __init__ so the rest of the package stays
         # importable without torch/faiss installed (the exact-name path and
         # alias tables both work fine without them).
-        import faiss
-        import numpy as np
-        import torch
-        from transformers import AutoModel, AutoTokenizer
-
-        self._np = np
-        self._torch = torch
+        self._np = _np
+        self._torch = _torch
 
         log.info("retriever: loading SapBERT model %s", model_name)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name)
+        self.tokenizer = _AutoTokenizer.from_pretrained(model_name)
+        self.model = _AutoModel.from_pretrained(model_name)
         self.model.eval()
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if _torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
 
         log.info("retriever: loading FAISS index at %s", faiss_path)
-        self.index = faiss.read_index(str(faiss_path))
+        self.index = _faiss.read_index(str(faiss_path))
 
         with meta_path.open(encoding="utf-8") as fh:
             self.metadata = json.load(fh)
@@ -141,7 +163,7 @@ class Retriever:
             return_tensors="pt",
         )
         toks = {k: v.to(self.device) for k, v in toks.items()}
-        with self._torch.no_grad():
+        with _torch.no_grad():
             cls = self.model(**toks)[0][0, 0, :].cpu().numpy().astype(self._np.float32)
 
         norm = self._np.linalg.norm(cls)
